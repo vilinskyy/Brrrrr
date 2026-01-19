@@ -4,6 +4,15 @@
 
 ![macOS](https://img.shields.io/badge/macOS-14.0+-blue) ![Swift](https://img.shields.io/badge/Swift-5.9+-orange) ![License](https://img.shields.io/badge/License-Proprietary-lightgrey)
 
+<p align="center">
+  <img src="assets/screenshots/normal-mode.png" alt="Normal Mode - Live camera feed" width="400">
+  <img src="assets/screenshots/geometry-mode.png" alt="Geometry Mode - Technical visualization" width="400">
+</p>
+
+<p align="center">
+  <em>Left: Normal mode with live camera feed | Right: Geometry mode showing face and hand landmarks</em>
+</p>
+
 ---
 
 ## Why Brrrrr?

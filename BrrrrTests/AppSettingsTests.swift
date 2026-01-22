@@ -4,7 +4,7 @@
 //
 
 import XCTest
-@testable import Brrrr
+@testable import Brrrrr
 
 final class AppSettingsTests: XCTestCase {
 	func testRoundTripSaveLoad() {

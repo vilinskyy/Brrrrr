@@ -11,6 +11,7 @@ import SwiftUI
 struct SettingsView: View {
 	@EnvironmentObject private var model: TouchStateModel
 	@StateObject private var launchAtLogin = LaunchAtLoginManager()
+	@ObservedObject private var updater = AppUpdateService.shared
 
 	@AppStorage(AppSettingsKey.selectedCameraID) private var selectedCameraID: String = ""
 	@AppStorage(AppSettingsKey.soundCooldownSeconds) private var soundCooldownSeconds: Double = 3
@@ -151,8 +152,6 @@ struct SettingsView: View {
 				}
 				.pickerStyle(.segmented)
 			}
-
-			Divider()
 
 			sectionTitle("Alerts") {
 				Button("Test") {
@@ -331,6 +330,24 @@ struct SettingsView: View {
 
 			Divider()
 
+			sectionTitle("Updates")
+
+			VStack(alignment: .leading, spacing: 10) {
+				if updater.isDirectDistribution {
+					Button("Check for Updates…") {
+						updater.checkForUpdates()
+					}
+					.buttonStyle(.bordered)
+					.controlSize(.small)
+				} else {
+					Text("This copy was installed from the Mac App Store. Updates are delivered by the App Store.")
+						.font(.callout)
+						.foregroundStyle(.secondary)
+				}
+			}
+
+			Divider()
+
 			// App version
 			HStack {
 				Text("Version")
@@ -441,7 +458,7 @@ struct SettingsView: View {
 	}
 
 	private var appVersion: String {
-		let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+		let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.2"
 		let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
 		return "\(version) (\(build))"
 	}
@@ -452,7 +469,7 @@ struct SettingsView: View {
 	}
 
 	private static let inAppPrivacySummary: String = """
-	Brrrrr uses your Mac's camera to detect hand-to-face touches in real time. Processing is on-device. No photos or video are recorded, stored, or transmitted. Brrrrr does not include analytics or tracking.
+	Brrrrr uses your Mac's camera to detect hand-to-face touches in real time. Processing is on-device. No photos or video are recorded, stored, or transmitted. Brrrrr does not include analytics or tracking. Direct-download builds can optionally check GitHub for updates when you choose “Check for Updates…”.
 	"""
 
 	private static let privacyPolicyText: String = """
@@ -472,7 +489,7 @@ struct SettingsView: View {
 	Brrrrr does not access the microphone and does not request microphone permissions.
 
 	Network
-	Brrrrr does not require network access for core functionality and does not send data to the developer.
+	Core functionality does not require network access. If you installed the direct-download version, you can optionally check GitHub for updates when you choose “Check for Updates…”. No analytics or personal data are sent.
 
 	Contact
 	vilinskyy.com

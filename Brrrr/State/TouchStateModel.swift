@@ -20,6 +20,7 @@ final class TouchStateModel: ObservableObject {
 	@Published private(set) var isPaused: Bool = false
 	@Published private(set) var pauseRemainingSeconds: Int = 0
 	@Published private(set) var hasUserStartedMonitoring: Bool = false
+	@Published private(set) var touchesToday: Int = 0
 
 	lazy var cameraManager = CameraManager()
 
@@ -36,7 +37,10 @@ final class TouchStateModel: ObservableObject {
 	private var pauseCountdownTask: Task<Void, Never>?
 	private var pauseUntilUptime: TimeInterval?
 	private lazy var settingsWindowController = SettingsWindowController(model: self)
-	private var sleepObservers: [NSObjectProtocol] = []
+	private var workspaceObservers: [NSObjectProtocol] = []
+	private var distributedObservers: [NSObjectProtocol] = []
+	private var wasAutoPausedBySleepOrLock: Bool = false
+	private var touchesTodayDate: Date?
 
 	init() {
 		hasUserStartedMonitoring = UserDefaults.standard.bool(forKey: AppSettingsKey.hasUserStartedMonitoring)
@@ -44,18 +48,26 @@ final class TouchStateModel: ObservableObject {
 			statusText = "Vision: starting…"
 		}
 		applyStoredSettings()
+		loadTouchStats()
 		observeSleepEvents()
 	}
 
 	deinit {
-		for observer in sleepObservers {
-			NotificationCenter.default.removeObserver(observer)
+		let workspaceNC = NSWorkspace.shared.notificationCenter
+		for observer in workspaceObservers {
+			workspaceNC.removeObserver(observer)
+		}
+
+		let distributedNC = DistributedNotificationCenter.default()
+		for observer in distributedObservers {
+			distributedNC.removeObserver(observer)
 		}
 	}
 
 	private nonisolated func observeSleepEvents() {
 		let workspace = NSWorkspace.shared
 		let nc = workspace.notificationCenter
+		let distributedNC = DistributedNotificationCenter.default()
 
 		// Pause when system sleeps (closing lid, menu bar sleep, etc.)
 		let sleepObserver = nc.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
@@ -64,21 +76,82 @@ final class TouchStateModel: ObservableObject {
 			}
 		}
 
-		// Pause when screen locks (⌘+Ctrl+Q or screensaver)
+		// Pause when the display sleeps (e.g., due to power saving). Screen lock/unlock is handled via
+		// distributed notifications below.
 		let screenSleepObserver = nc.addObserver(forName: NSWorkspace.screensDidSleepNotification, object: nil, queue: .main) { [weak self] _ in
 			Task { @MainActor [weak self] in
 				self?.pauseOnSleep()
 			}
 		}
 
+		// Resume after wake.
+		let didWakeObserver = nc.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
+			Task { @MainActor [weak self] in
+				self?.resumeIfAutoPaused()
+			}
+		}
+
+		// Resume when display wakes.
+		let screensDidWakeObserver = nc.addObserver(forName: NSWorkspace.screensDidWakeNotification, object: nil, queue: .main) { [weak self] _ in
+			Task { @MainActor [weak self] in
+				self?.resumeIfAutoPaused()
+			}
+		}
+
+		// Pause/resume on screen lock/unlock.
+		//
+		// Note: `com.apple.screenIsLocked` / `com.apple.screenIsUnlocked` are widely used distributed
+		// notifications on macOS (not formally documented), but they are the most reliable way to
+		// detect an actual lock/unlock cycle compared to screen sleep/wake.
+		let screenLockedObserver = distributedNC.addObserver(
+			forName: Notification.Name("com.apple.screenIsLocked"),
+			object: nil,
+			queue: .main
+		) { [weak self] _ in
+			Task { @MainActor [weak self] in
+				self?.pauseOnSleep()
+			}
+		}
+
+		let screenUnlockedObserver = distributedNC.addObserver(
+			forName: Notification.Name("com.apple.screenIsUnlocked"),
+			object: nil,
+			queue: .main
+		) { [weak self] _ in
+			Task { @MainActor [weak self] in
+				self?.resumeIfAutoPaused()
+			}
+		}
+
 		Task { @MainActor [weak self] in
-			self?.sleepObservers = [sleepObserver, screenSleepObserver]
+			self?.workspaceObservers = [sleepObserver, screenSleepObserver, didWakeObserver, screensDidWakeObserver]
+			self?.distributedObservers = [screenLockedObserver, screenUnlockedObserver]
 		}
 	}
 
 	private func pauseOnSleep() {
 		guard hasUserStartedMonitoring, !isPaused else { return }
+		wasAutoPausedBySleepOrLock = true
 		pauseMonitoring()
+	}
+
+	private func resumeIfAutoPaused() {
+		guard wasAutoPausedBySleepOrLock else { return }
+		guard hasUserStartedMonitoring else {
+			wasAutoPausedBySleepOrLock = false
+			return
+		}
+
+		// Don't override a timed pause.
+		guard pauseRemainingSeconds == 0, pauseUntilUptime == nil else { return }
+
+		guard isPaused else {
+			wasAutoPausedBySleepOrLock = false
+			return
+		}
+
+		wasAutoPausedBySleepOrLock = false
+		resumeMonitoring()
 	}
 
 	func userStartMonitoring() {
@@ -227,6 +300,10 @@ final class TouchStateModel: ObservableObject {
 		}
 	}
 
+	func refreshTouchStatsIfNeeded() {
+		resetTouchStatsIfNeeded()
+	}
+
 	// MARK: - Private
 
 	private func applyStoredSettings() {
@@ -262,6 +339,7 @@ final class TouchStateModel: ObservableObject {
 		isPipelineConfigured = true
 	}
 
+
 	private func handleDetections(_ detections: VisionDetections) {
 		lastDetections = detections
 
@@ -276,9 +354,11 @@ final class TouchStateModel: ObservableObject {
 		lastFrameTime = detections.timestamp
 
 		let output = classifier.update(with: detections)
+		let previousState = lastOutput?.state
 		lastOutput = output
 
 		touchState = output.state
+		recordTouchIfNeeded(previousState: previousState, newState: output.state)
 
 		let stateText: String = switch output.state {
 		case .noTouch: "No touch"
@@ -296,6 +376,51 @@ final class TouchStateModel: ObservableObject {
 		if output.state == .touching {
 			let didTrigger = alertCoordinator.triggerIfAllowed()
 			if didTrigger { flashPulse &+= 1 }
+		}
+	}
+
+	private func loadTouchStats(defaults: UserDefaults = .standard) {
+		let storedCount = defaults.integer(forKey: AppSettingsKey.touchesTodayCount)
+		let storedDate = defaults.object(forKey: AppSettingsKey.touchesTodayDate) as? Date
+		let now = Date()
+
+		if let storedDate, Calendar.current.isDate(storedDate, inSameDayAs: now) {
+			touchesToday = storedCount
+			touchesTodayDate = storedDate
+			return
+		}
+
+		touchesToday = 0
+		touchesTodayDate = Calendar.current.startOfDay(for: now)
+		persistTouchStats(defaults: defaults)
+	}
+
+	private func resetTouchStatsIfNeeded(now: Date = Date(), defaults: UserDefaults = .standard) {
+		let today = Calendar.current.startOfDay(for: now)
+		guard let storedDate = touchesTodayDate,
+			  Calendar.current.isDate(storedDate, inSameDayAs: today) else {
+			touchesToday = 0
+			touchesTodayDate = today
+			persistTouchStats(defaults: defaults)
+			return
+		}
+	}
+
+	private func recordTouchIfNeeded(previousState: TouchState?, newState: TouchState, defaults: UserDefaults = .standard) {
+		guard newState == .touching else { return }
+
+		let prior = previousState ?? .noTouch
+		guard prior != .touching else { return }
+
+		resetTouchStatsIfNeeded(defaults: defaults)
+		touchesToday += 1
+		persistTouchStats(defaults: defaults)
+	}
+
+	private func persistTouchStats(defaults: UserDefaults = .standard) {
+		defaults.set(touchesToday, forKey: AppSettingsKey.touchesTodayCount)
+		if let date = touchesTodayDate {
+			defaults.set(date, forKey: AppSettingsKey.touchesTodayDate)
 		}
 	}
 

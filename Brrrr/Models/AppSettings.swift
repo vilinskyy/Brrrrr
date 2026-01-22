@@ -19,6 +19,8 @@ enum AppSettingsKey {
 	static let flashColorGreen = "flashColorGreen"
 	static let flashColorBlue = "flashColorBlue"
 	static let flashOpacity = "flashOpacity"
+	static let touchesTodayCount = "touchesTodayCount"
+	static let touchesTodayDate = "touchesTodayDate"
 }
 
 struct AppSettings: Sendable, Hashable {

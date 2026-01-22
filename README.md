@@ -47,7 +47,7 @@ Brrrrr helps you build awareness and break the habit by providing real-time feed
 ### ⚡ Smart Pause
 - **Manual pause** — Pause/resume with one click
 - **Timed pause** — Pause for 30 minutes (e.g., during meals)
-- **Auto-pause on sleep** — Automatically pauses when your Mac sleeps or screen locks
+- **Auto pause/resume** — Pauses when your Mac sleeps or locks; resumes on wake/unlock
 
 ### 🎨 Preview Modes
 - **Normal** — Live camera feed
@@ -55,7 +55,7 @@ Brrrrr helps you build awareness and break the habit by providing real-time feed
 
 ### 🔒 Privacy First
 - **No data collection** — Zero analytics, telemetry, or tracking
-- **No network access** — App never connects to the internet
+- **Offline for core features** — Face-touch detection works fully offline. Direct-download builds can optionally check GitHub for updates when you click “Check for Updates…”.
 - **No recording** — Video frames are processed in memory and immediately discarded
 - **No microphone** — Camera only, microphone is never accessed
 - **On-device processing** — All ML inference happens locally using Apple Vision
@@ -183,8 +183,8 @@ Brrrr/
 ### Privacy Implementation
 
 - **Sandbox enabled** — App runs in macOS sandbox with minimal entitlements
-- **Camera only** — Only `com.apple.security.device.camera` entitlement
-- **No network entitlement** — App cannot make network requests
+- **Camera** — Uses `com.apple.security.device.camera`
+- **Network (updates only)** — Includes `com.apple.security.network.client` so the direct-download updater can check GitHub releases when you request it
 - **No persistent storage** — No photos/videos saved, only preferences in UserDefaults
 
 ---
@@ -208,6 +208,16 @@ open Brrrr.xcodeproj
 # Build and run
 # Press ⌘R or Product → Run
 ```
+
+### Testing & TDD
+
+Run the full test suite:
+
+```bash
+bash run-tests.sh
+```
+
+For the TDD workflow, watch mode, and test conventions, see [TESTING.md](TESTING.md).
 
 ### Signing
 
@@ -274,7 +284,12 @@ Brrrrr does not collect any personal data. See [PrivacyPolicy.md](PrivacyPolicy.
 
 ## Version History
 
-### 1.1 (Current)
+### 1.2 (Current)
+- "Touched Today" counter in the menu
+- Context menu icons and alignment tweaks
+- Touch stats are persisted per day
+
+### 1.1
 - Auto-pause when Mac sleeps or screen locks
 - Redesigned Settings with tabbed interface
 - Clickable slider values for quick adjustments

@@ -5,7 +5,7 @@ This document explains what you need to ship **Brrrrr** to Apple (Mac App Store)
 ### Assumptions
 
 - Target: **macOS 26+**
-- Data policy: **camera only**, **no microphone**, **no network**, **no recording** (live processing only)
+- Data policy: **camera only**, **no microphone**, **no recording** (live processing only). Direct-download builds may optionally check GitHub for updates when you choose “Check for Updates…”.
 - Sandbox: **enabled**
 
 ### Current project defaults (in this repo)

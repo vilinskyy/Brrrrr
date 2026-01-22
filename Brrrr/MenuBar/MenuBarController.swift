@@ -13,9 +13,11 @@ import SwiftUI
 final class MenuBarController: NSObject, NSMenuDelegate {
 	private let model: TouchStateModel
 	private let statusItem: NSStatusItem
+	private let updateService = AppUpdateService.shared
 	private var cancellables: Set<AnyCancellable> = []
 	private let popover = NSPopover()
 	private let launchAtLogin = LaunchAtLoginManager()
+	private let menuPlaceholderImage = NSImage(size: NSSize(width: 16, height: 16))
 	private var menuUpdateTimer: Timer?
 	private weak var countdownMenuItem: NSMenuItem?
 
@@ -149,13 +151,18 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
 	private func buildContextMenu() -> NSMenu {
 		let menu = NSMenu()
+		model.refreshTouchStatsIfNeeded()
 
 		// Start / pause / resume
 		if !model.hasUserStartedMonitoring {
-			menu.addItem(NSMenuItem(title: "Start", action: #selector(startFromMenu), keyEquivalent: ""))
+			let startItem = NSMenuItem(title: "Start", action: #selector(startFromMenu), keyEquivalent: "")
+			startItem.image = makeSymbolImage(name: "play.fill")
+			menu.addItem(startItem)
 		} else {
 			let pauseTitle = model.isPaused ? "Resume" : "Pause"
-			menu.addItem(NSMenuItem(title: pauseTitle, action: #selector(togglePause), keyEquivalent: ""))
+			let pauseItem = NSMenuItem(title: pauseTitle, action: #selector(togglePause), keyEquivalent: "")
+			pauseItem.image = makeSymbolImage(name: model.isPaused ? "play.fill" : "pause.fill")
+			menu.addItem(pauseItem)
 		}
 
 		if model.pauseRemainingSeconds > 0 {
@@ -171,15 +178,22 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 		let pauseForItem = NSMenuItem(title: "Pause for 30 min", action: #selector(pauseFor30Min), keyEquivalent: "")
 		pauseForItem.isEnabled = model.hasUserStartedMonitoring && model.pauseRemainingSeconds == 0
 		menu.addItem(pauseForItem)
+
+		let touchesItem = NSMenuItem(title: "Touched Today: \(model.touchesToday)", action: nil, keyEquivalent: "")
+		touchesItem.image = makeSymbolImage(name: "hand.tap")
+		touchesItem.isEnabled = false
+		menu.addItem(touchesItem)
 		menu.addItem(.separator())
 
 		// Video source submenu
 		let videoMenuItem = NSMenuItem(title: "Video Source", action: nil, keyEquivalent: "")
+		videoMenuItem.image = makeSymbolImage(name: "video")
 		let videoSubmenu = NSMenu()
 		let selected = UserDefaults.standard.string(forKey: AppSettingsKey.selectedCameraID) ?? ""
 
 		let defaultItem = NSMenuItem(title: "Default", action: #selector(selectCamera(_:)), keyEquivalent: "")
 		defaultItem.representedObject = ""
+		defaultItem.image = makeSymbolImage(name: "video")
 		defaultItem.state = selected.isEmpty ? .on : .off
 		videoSubmenu.addItem(defaultItem)
 		videoSubmenu.addItem(.separator())
@@ -187,6 +201,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 		for device in model.cameraManager.availableVideoDevices {
 			let item = NSMenuItem(title: device.localizedName, action: #selector(selectCamera(_:)), keyEquivalent: "")
 			item.representedObject = device.uniqueID
+			item.image = makeSymbolImage(name: "video")
 			item.state = (selected == device.uniqueID) ? .on : .off
 			videoSubmenu.addItem(item)
 		}
@@ -195,11 +210,13 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
 		// Alert output submenu
 		let alertMenuItem = NSMenuItem(title: "Alert Output", action: nil, keyEquivalent: "")
+		alertMenuItem.image = makeSymbolImage(name: "speaker.wave.2")
 		let alertSubmenu = NSMenu()
 		let modeRaw = UserDefaults.standard.object(forKey: AppSettingsKey.alertMode) as? Int ?? AlertMode.soundOnly.rawValue
 		for mode in AlertMode.allCases {
 			let item = NSMenuItem(title: mode.displayName, action: #selector(selectAlertMode(_:)), keyEquivalent: "")
 			item.representedObject = mode.rawValue
+			item.image = makeSymbolImage(name: alertModeSymbolName(mode))
 			item.state = (modeRaw == mode.rawValue) ? .on : .off
 			alertSubmenu.addItem(item)
 		}
@@ -210,18 +227,27 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
 		// Launch at login
 		let loginItem = NSMenuItem(title: "Launch at login", action: #selector(toggleLaunchAtLogin), keyEquivalent: "")
-		loginItem.state = launchAtLogin.isEnabled ? .on : .off
+		loginItem.image = launchAtLogin.isEnabled ? makeSymbolImage(name: "checkmark") : nil
+		loginItem.state = .off
 		menu.addItem(loginItem)
 
 		menu.addItem(.separator())
 
+		// Updates (direct distribution only)
+		if updateService.isDirectDistribution {
+			let updatesItem = NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
+			updatesItem.image = makeSymbolImage(name: "arrow.triangle.2.circlepath")
+			menu.addItem(updatesItem)
+			menu.addItem(.separator())
+		}
+
 		// Options / Quit - explicitly prevent macOS from auto-adding icons
 		let optionsItem = NSMenuItem(title: "Options…", action: #selector(openSettings), keyEquivalent: "")
-		optionsItem.image = NSImage()  // Empty image prevents system from adding default icon
+		optionsItem.image = makeSymbolImage(name: "gearshape")
 		menu.addItem(optionsItem)
 		
 		let quitItem = NSMenuItem(title: "Quit", action: #selector(quitApp), keyEquivalent: "q")
-		quitItem.image = NSImage()
+		quitItem.image = makeSymbolImage(name: "power")
 		menu.addItem(quitItem)
 
 		// Ensure targets are set
@@ -230,6 +256,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 			item.submenu?.items.forEach { $0.target = self }
 		}
 
+		alignMenuItems(menu)
 		return menu
 	}
 
@@ -247,6 +274,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
 	@objc private func openSettings() {
 		model.showSettingsWindow()
+	}
+
+	@objc private func checkForUpdates() {
+		updateService.checkForUpdates()
 	}
 
 	@objc private func toggleLaunchAtLogin() {
@@ -313,6 +344,25 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 		let image = NSImage(systemSymbolName: name, accessibilityDescription: nil)
 		image?.isTemplate = true
 		return image
+	}
+
+	private func alertModeSymbolName(_ mode: AlertMode) -> String {
+		switch mode {
+		case .soundAndScreen:
+			return "speaker.wave.2.fill"
+		case .soundOnly:
+			return "speaker.wave.2"
+		case .screenOnly:
+			return "rectangle.on.rectangle"
+		}
+	}
+
+	private func alignMenuItems(_ menu: NSMenu) {
+		for item in menu.items where !item.isSeparatorItem {
+			if item.image == nil {
+				item.image = menuPlaceholderImage
+			}
+		}
 	}
 
 	private func makeDotImage(color: NSColor) -> NSImage {

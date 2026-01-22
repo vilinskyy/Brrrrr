@@ -34,7 +34,7 @@ Brrrrr **does not access the microphone** and does not request microphone permis
 
 ### Network / Internet
 
-Brrrrr is designed to work without network access and does not send data to the developer. (If you choose to open external links in your web browser, your browser may make network requests — that is outside the app.)
+Brrrrr’s core functionality is designed to work without network access and does not send data to the developer. If you installed the direct-download version, the app can optionally connect to GitHub to check for updates when you choose “Check for Updates…”. No analytics or personal data are sent. (If you choose to open external links in your web browser, your browser may make network requests — that is outside the app.)
 
 ### Sharing with third parties
 

@@ -158,6 +158,7 @@ final class TouchClassifier {
 		}
 
 		let facePoints = (face.nose + face.outerLips + face.faceContour)
+
 		let fallbackFacePoint = NormalizedPoint(
 			x: face.boundingBox.x + (face.boundingBox.width / 2),
 			y: face.boundingBox.y + (face.boundingBox.height / 2),

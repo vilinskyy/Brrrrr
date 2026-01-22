@@ -36,11 +36,14 @@ Brrrrr requires Camera access to run Vision-based hand + face landmark detection
 
 The UI is a menu bar app. Open the popover from the menu bar icon to view the camera preview and status. Settings are available from the gear button or right‑click menu.
 
-### “What’s New” (template)
+### “What’s New” (since 1.0)
 
-- Improved detection stability
-- New alert customization options
-- Performance improvements
+- Auto‑pause when your Mac sleeps or the screen locks
+- Redesigned Settings with a tabbed layout and clearer sections
+- Quick‑select buttons for FPS, volume, and flash opacity
+- Preview style renamed from “Dots” to “Geometry”
+- New “Touched Today” counter in the menu bar context menu
+- Context menu icons and alignment refinements
 
 ### Keywords (starter list)
 

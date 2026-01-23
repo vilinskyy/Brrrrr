@@ -60,16 +60,22 @@ final class AppUpdateService: ObservableObject {
 	}
 
 	private static func isDirectDistributionUsingStoreKit() async -> Bool {
-		do {
-			let result = try await AppTransaction.shared
-			switch result {
-			case .verified(_):
-				return false
-			case .unverified(_, _):
-				return false
+		if #available(macOS 15.0, *) {
+			do {
+				let result = try await AppTransaction.shared
+				switch result {
+				case .verified(_):
+					return false
+				case .unverified(_, _):
+					return false
+				}
+			} catch {
+				return true
 			}
-		} catch {
-			return true
+		} else {
+			// Fallback for macOS 13–14: use deprecated appStoreReceiptURL
+			guard let receiptURL = Bundle.main.appStoreReceiptURL else { return true }
+			return !FileManager.default.fileExists(atPath: receiptURL.path)
 		}
 	}
 

@@ -2,7 +2,7 @@
 
 **Stop touching your face.** Brrrrr is a macOS menu bar app that uses your camera and on-device machine learning to detect when your hand approaches your face — and alerts you before you touch.
 
-![macOS](https://img.shields.io/badge/macOS-14.0+-blue) ![Swift](https://img.shields.io/badge/Swift-5.9+-orange) ![License](https://img.shields.io/badge/License-Proprietary-lightgrey)
+![macOS](https://img.shields.io/badge/macOS-13.0+-blue) ![Swift](https://img.shields.io/badge/Swift-5.9+-orange) ![License](https://img.shields.io/badge/License-Proprietary-lightgrey)
 
 <p align="center">
   <img src="assets/screenshots/normal-mode.png" alt="Normal Mode - Live camera feed" width="400">
@@ -64,7 +64,7 @@ Brrrrr helps you build awareness and break the habit by providing real-time feed
 
 ## System Requirements
 
-- **macOS 14.0** (Sonoma) or later
+- **macOS 13.0** (Ventura) or later
 - Mac with built-in or external camera
 - Apple Silicon or Intel processor
 
@@ -193,7 +193,7 @@ Brrrr/
 
 ### Prerequisites
 - Xcode 15.0 or later
-- macOS 14.0 SDK
+- macOS 13.0 SDK
 
 ### Steps
 

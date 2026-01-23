@@ -284,7 +284,11 @@ Brrrrr does not collect any personal data. See [PrivacyPolicy.md](PrivacyPolicy.
 
 ## Version History
 
-### 1.2 (Current)
+### 1.3 (Current)
+- Supports macOS 13.0 (Ventura) and later
+- Improved App Store compatibility
+
+### 1.2
 - "Touched Today" counter in the menu
 - Context menu icons and alignment tweaks
 - Touch stats are persisted per day

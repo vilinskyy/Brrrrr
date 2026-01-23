@@ -38,6 +38,7 @@ The UI is a menu bar app. Open the popover from the menu bar icon to view the ca
 
 ### “What’s New” (since 1.0)
 
+- Now supports macOS 13.0 (Ventura) and later
 - Auto‑pause when your Mac sleeps or the screen locks
 - Redesigned Settings with a tabbed layout and clearer sections
 - Quick‑select buttons for FPS, volume, and flash opacity

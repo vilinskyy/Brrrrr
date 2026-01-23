@@ -103,7 +103,7 @@ struct ContentView: View {
 			model.cameraManager.refreshAvailableDevices()
 			model.cameraManager.setSelectedDevice(uniqueID: selectedCameraID.isEmpty ? nil : selectedCameraID)
 		}
-		.onChange(of: selectedCameraID) { _, newValue in
+		.onChange(of: selectedCameraID) { newValue in
 			model.cameraManager.setSelectedDevice(uniqueID: newValue.isEmpty ? nil : newValue)
 		}
 	}

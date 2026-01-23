@@ -184,8 +184,14 @@ private final class CameraSessionController {
 	// MARK: - Discovery
 
 	static func discoverVideoDevices() -> [AVCaptureDevice] {
+		let deviceTypes: [AVCaptureDevice.DeviceType]
+		if #available(macOS 14.0, *) {
+			deviceTypes = [.builtInWideAngleCamera, .external]
+		} else {
+			deviceTypes = [.builtInWideAngleCamera, .externalUnknown]
+		}
 		let discovery = AVCaptureDevice.DiscoverySession(
-			deviceTypes: [.builtInWideAngleCamera, .external],
+			deviceTypes: deviceTypes,
 			mediaType: .video,
 			position: .unspecified
 		)

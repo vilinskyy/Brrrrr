@@ -51,37 +51,37 @@ struct SettingsView: View {
 			launchAtLogin.refresh()
 			applyAllSettingsToModel()
 		}
-		.onChange(of: selectedCameraID) { _, newValue in
+		.onChange(of: selectedCameraID) { newValue in
 			model.cameraManager.setSelectedDevice(uniqueID: newValue.isEmpty ? nil : newValue)
 		}
-		.onChange(of: soundCooldownSeconds) { _, newValue in
+		.onChange(of: soundCooldownSeconds) { newValue in
 			model.setSoundCooldownSeconds(newValue)
 		}
-		.onChange(of: maxVisionFPS) { _, newValue in
+		.onChange(of: maxVisionFPS) { newValue in
 			model.setMaxVisionFPS(newValue)
 		}
-		.onChange(of: previewStyleRaw) { _, newValue in
+		.onChange(of: previewStyleRaw) { newValue in
 			model.setPreviewStyle(PreviewStyle(rawValue: newValue) ?? .dots)
 		}
-		.onChange(of: alertModeRaw) { _, newValue in
+		.onChange(of: alertModeRaw) { newValue in
 			model.setAlertMode(AlertMode(rawValue: newValue) ?? .soundAndScreen)
 		}
-		.onChange(of: alertSoundPath) { _, newValue in
+		.onChange(of: alertSoundPath) { newValue in
 			model.setAlertSoundPath(newValue)
 		}
-		.onChange(of: alertSoundVolume) { _, newValue in
+		.onChange(of: alertSoundVolume) { newValue in
 			model.setAlertSoundVolume(newValue)
 		}
-		.onChange(of: flashColorRed) { _, _ in
+		.onChange(of: flashColorRed) { _ in
 			model.setFlashColor(red: flashColorRed, green: flashColorGreen, blue: flashColorBlue)
 		}
-		.onChange(of: flashColorGreen) { _, _ in
+		.onChange(of: flashColorGreen) { _ in
 			model.setFlashColor(red: flashColorRed, green: flashColorGreen, blue: flashColorBlue)
 		}
-		.onChange(of: flashColorBlue) { _, _ in
+		.onChange(of: flashColorBlue) { _ in
 			model.setFlashColor(red: flashColorRed, green: flashColorGreen, blue: flashColorBlue)
 		}
-		.onChange(of: flashOpacity) { _, newValue in
+		.onChange(of: flashOpacity) { newValue in
 			model.setFlashOpacity(newValue)
 		}
 		.sheet(isPresented: $isPrivacyPolicyPresented) {

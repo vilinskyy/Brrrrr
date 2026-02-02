@@ -8,6 +8,17 @@ import SwiftUI
 /// Renders a "technical" dots/skeleton-like visualization from Vision landmarks.
 struct TechnicalDotsOverlayView: View {
 	let detections: VisionDetections?
+	/// Visible region of the camera feed in metadata coordinates (0...1), as reported by
+	/// `AVCaptureVideoPreviewLayer.metadataOutputRectConverted(fromLayerRect:)`.
+	///
+	/// Using this avoids drift/stretch when the preview uses `.resizeAspectFill` cropping.
+	var metadataOutputRect: CGRect? = nil
+	/// Whether the UI preview is mirrored (front camera style).
+	var isMirrored: Bool = false
+	/// Transform mapping metadata coordinates (0...1) to view coordinates, derived from
+	/// `AVCaptureVideoPreviewLayer.layerRectConverted(fromMetadataOutputRect:)`.
+	/// When provided, it is the most reliable way to align dots to the preview layer.
+	var metadataToLayerTransform: CGAffineTransform? = nil
 
 	var body: some View {
 		Canvas { context, size in
@@ -67,9 +78,29 @@ struct TechnicalDotsOverlayView: View {
 	}
 
 	private func toPoint(_ p: NormalizedPoint, size: CGSize) -> CGPoint {
-		let x = CGFloat(p.x) * size.width
-		let y = (1 - CGFloat(p.y)) * size.height
-		return CGPoint(x: x, y: y)
+		// Vision coordinates are normalized with origin at bottom-left.
+		// Preview layer metadata coordinates are normalized with origin at top-left.
+		let x = CGFloat(p.x)
+		let y = 1 - CGFloat(p.y)
+
+		if let metadataToLayerTransform {
+			// Let the preview-layer-derived transform handle crop/scale/rotation/mirroring.
+			return CGPoint(x: x, y: y).applying(metadataToLayerTransform)
+		}
+
+		var xx = x
+		var yy = y
+
+		if let rect = metadataOutputRect, rect.width > 0, rect.height > 0 {
+			xx = (xx - rect.origin.x) / rect.width
+			yy = (yy - rect.origin.y) / rect.height
+		}
+
+		if isMirrored {
+			xx = 1 - xx
+		}
+
+		return CGPoint(x: xx * size.width, y: yy * size.height)
 	}
 }
 

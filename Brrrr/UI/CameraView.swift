@@ -3,6 +3,7 @@
 //  Brrrr
 //
 
+#if os(macOS)
 import AVFoundation
 import SwiftUI
 
@@ -68,3 +69,4 @@ struct CameraView: NSViewRepresentable {
 	}
 }
 
+#endif

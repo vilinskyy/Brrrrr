@@ -3,6 +3,7 @@
 //  Brrrr
 //
 
+#if os(macOS)
 import AppKit
 import AVFoundation
 import SwiftUI
@@ -98,3 +99,4 @@ struct MenuBarStatusItemView: View {
 	}
 }
 
+#endif

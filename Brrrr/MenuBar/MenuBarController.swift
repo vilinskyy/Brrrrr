@@ -3,6 +3,7 @@
 //  Brrrr
 //
 
+#if os(macOS)
 import AppKit
 import AVFoundation
 import Combine
@@ -68,7 +69,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 	private func configureStatusItem() {
 		guard let button = statusItem.button else { return }
 
-		button.image = makeDotImage(color: .systemGray)
+		button.image = makeMenuBarImage(named: "MenuBarIdle")
 		button.toolTip = "Brrrrr"
 		button.target = self
 		button.action = #selector(handleStatusItemClick(_:))
@@ -89,11 +90,10 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 		guard let button = statusItem.button else { return }
 
 		if model.isPaused {
+			button.image = makeMenuBarImage(named: "MenuBarPause")
 			if model.pauseRemainingSeconds > 0 {
-				button.image = makeSymbolImage(name: "timer")
 				button.toolTip = "Brrrrr — paused (\(formatDuration(seconds: model.pauseRemainingSeconds)))"
 			} else {
-				button.image = makeSymbolImage(name: "pause.fill")
 				button.toolTip = "Brrrrr — paused"
 			}
 			return
@@ -101,13 +101,13 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
 		switch state {
 		case .noTouch:
-			button.image = makeDotImage(color: .systemGray)
+			button.image = makeMenuBarImage(named: "MenuBarIdle")
 			button.toolTip = "Brrrrr — no touch"
 		case .maybeTouch:
-			button.image = makeDotImage(color: .systemYellow)
+			button.image = makeMenuBarImage(named: "MenuBarMaybe")
 			button.toolTip = "Brrrrr — maybe touching"
 		case .touching:
-			button.image = makeDotImage(color: .systemRed)
+			button.image = makeMenuBarImage(named: "MenuBarTriggered")
 			button.toolTip = "Brrrrr — touching"
 		}
 	}
@@ -365,17 +365,12 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 		}
 	}
 
-	private func makeDotImage(color: NSColor) -> NSImage {
-		let size = NSSize(width: 16, height: 16)
-		let image = NSImage(size: size, flipped: false) { rect in
-			let circleRect = rect.insetBy(dx: 3, dy: 3)
-			let path = NSBezierPath(ovalIn: circleRect)
-			color.setFill()
-			path.fill()
-			return true
-		}
+	private func makeMenuBarImage(named name: String) -> NSImage? {
+		guard let image = NSImage(named: name) else { return nil }
+		image.size = NSSize(width: 18, height: 18)
 		image.isTemplate = false
 		return image
 	}
 }
 
+#endif

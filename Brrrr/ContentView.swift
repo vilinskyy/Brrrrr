@@ -5,6 +5,7 @@
 //  Created by Oleksandr Vilinskyi on 18/01/2026.
 //
 
+#if os(macOS)
 import AVFoundation
 import AppKit
 import SwiftUI
@@ -165,3 +166,5 @@ struct ContentView: View {
 #Preview {
     ContentView()
 }
+
+#endif

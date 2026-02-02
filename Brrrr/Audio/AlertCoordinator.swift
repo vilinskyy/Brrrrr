@@ -3,8 +3,15 @@
 //  Brrrr
 //
 
-import AppKit
 import Foundation
+
+#if os(macOS)
+import AppKit
+#endif
+
+#if os(iOS)
+import AudioToolbox
+#endif
 
 @MainActor
 final class AlertCoordinator {
@@ -15,24 +22,32 @@ final class AlertCoordinator {
 
 	/// `nil` means "system beep".
 	var soundURL: URL? {
-		didSet { rebuildSound() }
+		didSet { rebuildSoundIfNeeded() }
 	}
 
 	/// 0...1
 	var soundVolume: Double = 1.0
 
-	var flashColor: NSColor = .systemRed
+	/// 0...1
+	var flashColorRed: Double = 1.0
+	/// 0...1
+	var flashColorGreen: Double = 0.0
+	/// 0...1
+	var flashColorBlue: Double = 0.0
+
 	/// 0...1
 	var flashOpacity: Double = 0.65
 	var flashDurationSeconds: TimeInterval = 0.1
 
 	private var lastTriggerTime: TimeInterval = -TimeInterval.greatestFiniteMagnitude
-	private let screenFlashController = ScreenFlashController()
 
+#if os(macOS)
+	private let screenFlashController = ScreenFlashController()
 	private var sound: NSSound?
+#endif
 
 	init() {
-		rebuildSound()
+		rebuildSoundIfNeeded()
 	}
 
 	func resetCooldown() {
@@ -51,11 +66,17 @@ final class AlertCoordinator {
 		}
 
 		if mode.enablesScreen {
+#if os(macOS)
+			let r = max(0, min(1, flashColorRed))
+			let g = max(0, min(1, flashColorGreen))
+			let b = max(0, min(1, flashColorBlue))
+
 			screenFlashController.flash(
 				durationSeconds: flashDurationSeconds,
-				color: flashColor,
+				color: NSColor(calibratedRed: r, green: g, blue: b, alpha: 1),
 				opacity: CGFloat(max(0, min(1, flashOpacity)))
 			)
+#endif
 		}
 
 		return true
@@ -64,6 +85,7 @@ final class AlertCoordinator {
 	// MARK: - Private
 
 	private func playSound() -> Bool {
+#if os(macOS)
 		let volume = Float(max(0, min(1, soundVolume)))
 
 		if let sound {
@@ -74,9 +96,15 @@ final class AlertCoordinator {
 
 		NSSound.beep()
 		return true
+#else
+		// iOS: keep it simple for now (a lightweight system sound).
+		AudioServicesPlaySystemSound(1104)
+		return true
+#endif
 	}
 
-	private func rebuildSound() {
+#if os(macOS)
+	private func rebuildSoundIfNeeded() {
 		guard let soundURL else {
 			sound = nil
 			return
@@ -84,5 +112,8 @@ final class AlertCoordinator {
 
 		sound = NSSound(contentsOf: soundURL, byReference: true)
 	}
+#else
+	private func rebuildSoundIfNeeded() {}
+#endif
 }
 

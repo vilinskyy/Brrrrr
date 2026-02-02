@@ -3,6 +3,7 @@
 //  Brrrr
 //
 
+#if os(macOS)
 import AppKit
 import Combine
 import Foundation
@@ -51,3 +52,4 @@ final class LaunchAtLoginManager: ObservableObject {
 	}
 }
 
+#endif

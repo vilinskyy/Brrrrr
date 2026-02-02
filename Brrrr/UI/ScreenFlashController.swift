@@ -5,6 +5,7 @@
 //  Flashes a borderless red overlay across all connected displays.
 //
 
+#if os(macOS)
 import AppKit
 import Foundation
 
@@ -126,3 +127,4 @@ private final class ScreenFlashWindow: NSPanel {
 	}
 }
 
+#endif

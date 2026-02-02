@@ -54,6 +54,10 @@ struct VisionDetections: Sendable, Hashable {
 	var timestamp: Double
 	var hands: [HandLandmarks]
 	var faces: [FaceLandmarks]
+	/// Source frame dimensions used for Vision (pixel buffer size).
+	/// Used to align the dots overlay with aspect-fill video previews.
+	var frameWidth: Int = 0
+	var frameHeight: Int = 0
 }
 
 /// AVCapture video output delegate that produces `VisionDetections`.
@@ -113,6 +117,8 @@ final class VisionPipeline: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
 
 	nonisolated func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
 		guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+		let frameWidth = CVPixelBufferGetWidth(pixelBuffer)
+		let frameHeight = CVPixelBufferGetHeight(pixelBuffer)
 
 		let now = CACurrentMediaTime()
 		let configuredFPS = maxFPS
@@ -122,8 +128,14 @@ final class VisionPipeline: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
 		}
 		lastAnalysisTime = now
 
-		// macOS camera frames are effectively "up" oriented for our use case.
-		let orientation: CGImagePropertyOrientation = .up
+		let orientation: CGImagePropertyOrientation = {
+			#if os(iOS)
+			return Self.cgImageOrientation(from: connection)
+			#else
+			// macOS camera frames are effectively "up" oriented for our use case.
+			return .up
+			#endif
+		}()
 
 		do {
 			// Preview frames are only emitted for the "normal" preview mode.
@@ -145,11 +157,45 @@ final class VisionPipeline: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
 				self.extractFaceLandmarks(from: observation)
 			}
 
-			onDetections?(VisionDetections(timestamp: now, hands: hands, faces: faces))
+			onDetections?(
+				VisionDetections(
+					timestamp: now,
+					hands: hands,
+					faces: faces,
+					frameWidth: frameWidth,
+					frameHeight: frameHeight
+				)
+			)
 		} catch {
 			// Swallow errors; transient failures are expected on real-world frames.
 		}
 	}
+
+	#if os(iOS)
+	nonisolated private static func cgImageOrientation(from connection: AVCaptureConnection) -> CGImagePropertyOrientation {
+		let rawAngle = connection.videoRotationAngle
+		let snapped = (rawAngle / 90).rounded() * 90
+		let normalized = snapped.truncatingRemainder(dividingBy: 360)
+		let angle = Int((normalized < 0 ? (normalized + 360) : normalized).rounded())
+
+		let base: CGImagePropertyOrientation = switch angle {
+		case 0: .up
+		case 90: .right
+		case 180: .down
+		case 270: .left
+		default: .up
+		}
+
+		guard connection.isVideoMirrored else { return base }
+		return switch base {
+		case .up: .upMirrored
+		case .down: .downMirrored
+		case .left: .leftMirrored
+		case .right: .rightMirrored
+		default: base
+		}
+	}
+	#endif
 
 	// MARK: - Extraction
 

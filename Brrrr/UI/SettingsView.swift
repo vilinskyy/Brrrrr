@@ -3,6 +3,7 @@
 //  Brrrr
 //
 
+#if os(macOS)
 import AVFoundation
 import AppKit
 import ServiceManagement
@@ -500,3 +501,5 @@ struct SettingsView: View {
 	SettingsView()
 		.environmentObject(TouchStateModel())
 }
+
+#endif

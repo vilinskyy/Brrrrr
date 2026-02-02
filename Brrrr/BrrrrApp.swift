@@ -7,6 +7,8 @@
 
 import SwiftUI
 
+#if os(macOS)
+
 @main
 struct BrrrrrApp: App {
 	@StateObject private var model: TouchStateModel
@@ -44,3 +46,21 @@ struct BrrrrrApp: App {
 		.defaultSize(width: 560, height: 840)
 	}
 }
+
+#endif
+
+#if os(iOS)
+
+@main
+struct BrrrrrIOSApp: App {
+	@StateObject private var model = TouchStateModel()
+
+	var body: some Scene {
+		WindowGroup {
+			IOSRootView()
+				.environmentObject(model)
+		}
+	}
+}
+
+#endif

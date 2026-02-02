@@ -3,6 +3,7 @@
 //  Brrrr
 //
 
+#if os(macOS)
 import AppKit
 import Foundation
 
@@ -31,3 +32,4 @@ final class AlertPlayer {
 	}
 }
 
+#endif

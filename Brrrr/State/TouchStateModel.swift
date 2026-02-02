@@ -3,10 +3,14 @@
 //  Brrrr
 //
 
-import AppKit
 import Combine
+import CoreGraphics
 import Darwin
 import Foundation
+
+#if os(macOS)
+import AppKit
+#endif
 
 @MainActor
 final class TouchStateModel: ObservableObject {
@@ -24,6 +28,8 @@ final class TouchStateModel: ObservableObject {
 
 	lazy var cameraManager = CameraManager()
 
+	private let defaults: UserDefaults
+
 	private lazy var visionPipeline = VisionPipeline()
 	private let classifier = TouchClassifier()
 	private let alertCoordinator = AlertCoordinator()
@@ -36,14 +42,18 @@ final class TouchStateModel: ObservableObject {
 	private var resumeTask: Task<Void, Never>?
 	private var pauseCountdownTask: Task<Void, Never>?
 	private var pauseUntilUptime: TimeInterval?
+	#if os(macOS)
 	private lazy var settingsWindowController = SettingsWindowController(model: self)
 	private var workspaceObservers: [NSObjectProtocol] = []
 	private var distributedObservers: [NSObjectProtocol] = []
 	private var wasAutoPausedBySleepOrLock: Bool = false
+	#endif
 	private var touchesTodayDate: Date?
 
-	init() {
-		hasUserStartedMonitoring = UserDefaults.standard.bool(forKey: AppSettingsKey.hasUserStartedMonitoring)
+	init(defaults: UserDefaults = .standard) {
+		self.defaults = defaults
+
+		hasUserStartedMonitoring = defaults.bool(forKey: AppSettingsKey.hasUserStartedMonitoring)
 		if hasUserStartedMonitoring {
 			statusText = "Vision: starting…"
 		}
@@ -53,6 +63,7 @@ final class TouchStateModel: ObservableObject {
 	}
 
 	deinit {
+		#if os(macOS)
 		let workspaceNC = NSWorkspace.shared.notificationCenter
 		for observer in workspaceObservers {
 			workspaceNC.removeObserver(observer)
@@ -62,8 +73,10 @@ final class TouchStateModel: ObservableObject {
 		for observer in distributedObservers {
 			distributedNC.removeObserver(observer)
 		}
+		#endif
 	}
 
+	#if os(macOS)
 	private nonisolated func observeSleepEvents() {
 		let workspace = NSWorkspace.shared
 		let nc = workspace.notificationCenter
@@ -128,7 +141,11 @@ final class TouchStateModel: ObservableObject {
 			self?.distributedObservers = [screenLockedObserver, screenUnlockedObserver]
 		}
 	}
+	#else
+	private nonisolated func observeSleepEvents() {}
+	#endif
 
+	#if os(macOS)
 	private func pauseOnSleep() {
 		guard hasUserStartedMonitoring, !isPaused else { return }
 		wasAutoPausedBySleepOrLock = true
@@ -153,13 +170,14 @@ final class TouchStateModel: ObservableObject {
 		wasAutoPausedBySleepOrLock = false
 		resumeMonitoring()
 	}
+	#endif
 
 	func userStartMonitoring() {
 		guard !hasUserStartedMonitoring else {
 			startMonitoring()
 			return
 		}
-		UserDefaults.standard.set(true, forKey: AppSettingsKey.hasUserStartedMonitoring)
+		defaults.set(true, forKey: AppSettingsKey.hasUserStartedMonitoring)
 		hasUserStartedMonitoring = true
 		statusText = "Vision: starting…"
 		startMonitoring()
@@ -170,7 +188,7 @@ final class TouchStateModel: ObservableObject {
 		isPaused = false
 
 		// Apply persisted settings (camera selection, vision FPS) at start time.
-		let selectedCameraID = UserDefaults.standard.string(forKey: AppSettingsKey.selectedCameraID) ?? ""
+		let selectedCameraID = defaults.string(forKey: AppSettingsKey.selectedCameraID) ?? ""
 		if !selectedCameraID.isEmpty {
 			cameraManager.setSelectedDevice(uniqueID: selectedCameraID)
 		}
@@ -274,7 +292,9 @@ final class TouchStateModel: ObservableObject {
 		let r = max(0, min(1, red))
 		let g = max(0, min(1, green))
 		let b = max(0, min(1, blue))
-		alertCoordinator.flashColor = NSColor(calibratedRed: r, green: g, blue: b, alpha: 1)
+		alertCoordinator.flashColorRed = r
+		alertCoordinator.flashColorGreen = g
+		alertCoordinator.flashColorBlue = b
 	}
 
 	func setFlashOpacity(_ opacity: Double) {
@@ -286,11 +306,17 @@ final class TouchStateModel: ObservableObject {
 	}
 
 	func testAlert() {
-		alertCoordinator.triggerIfAllowed(ignoreCooldown: true)
+		let didTrigger = alertCoordinator.triggerIfAllowed(ignoreCooldown: true)
+		#if os(iOS)
+		// iOS screen flash is implemented as a SwiftUI overlay (driven by `flashPulse`).
+		if didTrigger, alertCoordinator.mode.enablesScreen { flashPulse &+= 1 }
+		#endif
 	}
 
 	func showSettingsWindow() {
+		#if os(macOS)
 		settingsWindowController.show()
+		#endif
 	}
 
 	func setMaxVisionFPS(_ fps: Double) {
@@ -307,7 +333,7 @@ final class TouchStateModel: ObservableObject {
 	// MARK: - Private
 
 	private func applyStoredSettings() {
-		let settings = AppSettings.load()
+		let settings = AppSettings.load(from: defaults)
 		storedSettings = settings
 
 		setSoundCooldownSeconds(settings.soundCooldownSeconds)
@@ -330,11 +356,13 @@ final class TouchStateModel: ObservableObject {
 			}
 		}
 
+		#if os(macOS)
 		visionPipeline.onPreviewFrame = { [weak self] cgImage in
 			Task { @MainActor [weak self] in
 				self?.previewImage = cgImage
 			}
 		}
+		#endif
 
 		isPipelineConfigured = true
 	}
@@ -375,53 +403,38 @@ final class TouchStateModel: ObservableObject {
 
 		if output.state == .touching {
 			let didTrigger = alertCoordinator.triggerIfAllowed()
-			if didTrigger { flashPulse &+= 1 }
+			if didTrigger, alertCoordinator.mode.enablesScreen { flashPulse &+= 1 }
 		}
 	}
 
-	private func loadTouchStats(defaults: UserDefaults = .standard) {
-		let storedCount = defaults.integer(forKey: AppSettingsKey.touchesTodayCount)
-		let storedDate = defaults.object(forKey: AppSettingsKey.touchesTodayDate) as? Date
-		let now = Date()
-
-		if let storedDate, Calendar.current.isDate(storedDate, inSameDayAs: now) {
-			touchesToday = storedCount
-			touchesTodayDate = storedDate
-			return
-		}
-
-		touchesToday = 0
-		touchesTodayDate = Calendar.current.startOfDay(for: now)
-		persistTouchStats(defaults: defaults)
+	private func loadTouchStats() {
+		let stats = TouchStatsStore.load(from: defaults)
+		touchesToday = stats.count
+		touchesTodayDate = stats.day
 	}
 
-	private func resetTouchStatsIfNeeded(now: Date = Date(), defaults: UserDefaults = .standard) {
-		let today = Calendar.current.startOfDay(for: now)
-		guard let storedDate = touchesTodayDate,
-			  Calendar.current.isDate(storedDate, inSameDayAs: today) else {
-			touchesToday = 0
-			touchesTodayDate = today
-			persistTouchStats(defaults: defaults)
-			return
+	private func resetTouchStatsIfNeeded(now: Date = Date()) {
+		let stats = TouchStatsStore.load(from: defaults, now: now)
+		if touchesToday != stats.count || touchesTodayDate != stats.day {
+			touchesToday = stats.count
+			touchesTodayDate = stats.day
 		}
 	}
 
-	private func recordTouchIfNeeded(previousState: TouchState?, newState: TouchState, defaults: UserDefaults = .standard) {
+	private func recordTouchIfNeeded(previousState: TouchState?, newState: TouchState) {
 		guard newState == .touching else { return }
 
 		let prior = previousState ?? .noTouch
 		guard prior != .touching else { return }
 
-		resetTouchStatsIfNeeded(defaults: defaults)
+		resetTouchStatsIfNeeded()
 		touchesToday += 1
-		persistTouchStats(defaults: defaults)
+		persistTouchStats()
 	}
 
-	private func persistTouchStats(defaults: UserDefaults = .standard) {
-		defaults.set(touchesToday, forKey: AppSettingsKey.touchesTodayCount)
-		if let date = touchesTodayDate {
-			defaults.set(date, forKey: AppSettingsKey.touchesTodayDate)
-		}
+	private func persistTouchStats() {
+		let date = touchesTodayDate ?? Calendar.current.startOfDay(for: Date())
+		TouchStatsStore(day: date, count: touchesToday).persist(to: defaults)
 	}
 
 	private func startCPUUsageMonitoring() {

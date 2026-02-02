@@ -3,6 +3,7 @@
 //  Brrrr
 //
 
+#if os(macOS)
 import AppKit
 import SwiftUI
 
@@ -39,3 +40,4 @@ struct MenuBarIndicatorLabel: View {
 	}
 }
 
+#endif

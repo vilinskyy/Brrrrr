@@ -3,6 +3,7 @@
 //  Brrrr
 //
 
+#if os(macOS)
 import AppKit
 import Combine
 import Foundation
@@ -328,3 +329,4 @@ private extension String {
 	}
 }
 
+#endif

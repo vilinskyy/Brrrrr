@@ -11,7 +11,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Run tests
         env:
           DERIVED_DATA_PATH: ${{ runner.temp }}/BrrrrDerivedData
@@ -19,7 +19,7 @@ jobs:
         run: bash run-tests.sh
       - name: Upload test results
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: xcode-test-results
           path: ${{ runner.temp }}/BrrrrTestResults.xcresult

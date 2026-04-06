@@ -7,6 +7,7 @@ import Combine
 import CoreGraphics
 import Darwin
 import Foundation
+import os
 
 #if os(macOS)
 import AppKit

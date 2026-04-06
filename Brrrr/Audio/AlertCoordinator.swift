@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import os
 
 #if os(macOS)
 import AppKit

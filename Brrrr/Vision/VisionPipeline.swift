@@ -8,6 +8,7 @@
 import AVFoundation
 import CoreImage
 import Foundation
+import os
 import Vision
 
 private extension NSLock {

@@ -9,6 +9,7 @@ import AVFoundation
 import Combine
 import CoreGraphics
 import Foundation
+import os
 
 @MainActor
 final class CameraManager: NSObject, ObservableObject {

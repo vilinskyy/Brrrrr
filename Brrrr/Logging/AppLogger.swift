@@ -8,10 +8,10 @@
 import os
 
 enum AppLogger {
-	static let general = Logger(subsystem: "com.brrrr.app", category: "general")
-	static let vision = Logger(subsystem: "com.brrrr.app", category: "vision")
-	static let camera = Logger(subsystem: "com.brrrr.app", category: "camera")
-	static let alert = Logger(subsystem: "com.brrrr.app", category: "alert")
-	static let flash = Logger(subsystem: "com.brrrr.app", category: "flash")
-	static let lifecycle = Logger(subsystem: "com.brrrr.app", category: "lifecycle")
+	nonisolated static let general = Logger(subsystem: "com.brrrr.app", category: "general")
+	nonisolated static let vision = Logger(subsystem: "com.brrrr.app", category: "vision")
+	nonisolated static let camera = Logger(subsystem: "com.brrrr.app", category: "camera")
+	nonisolated static let alert = Logger(subsystem: "com.brrrr.app", category: "alert")
+	nonisolated static let flash = Logger(subsystem: "com.brrrr.app", category: "flash")
+	nonisolated static let lifecycle = Logger(subsystem: "com.brrrr.app", category: "lifecycle")
 }

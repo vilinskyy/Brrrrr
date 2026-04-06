@@ -67,6 +67,7 @@ final class CameraManager: NSObject, ObservableObject {
 
 	func setSelectedDevice(uniqueID: String?) {
 		selectedDeviceUniqueID = uniqueID
+		AppLogger.camera.info("setSelectedDevice uniqueID=\(uniqueID ?? "(nil)", privacy: .public)")
 
 		guard authorizationState == .authorized else { return }
 		sessionController.setDevice(
@@ -81,6 +82,7 @@ final class CameraManager: NSObject, ObservableObject {
 
 	func start() {
 		lastError = nil
+		AppLogger.camera.info("start() authorizationState=\(String(describing: self.authorizationState), privacy: .public)")
 
 		// Reduce noise from system camera effects.
 		//
@@ -110,6 +112,7 @@ final class CameraManager: NSObject, ObservableObject {
 				Task { @MainActor [weak self] in
 					guard let self else { return }
 
+					AppLogger.camera.info("requestAccess for video granted=\(granted, privacy: .public)")
 					self.authorizationState = granted ? .authorized : .denied
 					if granted {
 						self.refreshAvailableDevices()
@@ -130,6 +133,7 @@ final class CameraManager: NSObject, ObservableObject {
 	}
 
 	func stop() {
+		AppLogger.camera.info("stop()")
 		sessionController.stopRunning()
 	}
 }

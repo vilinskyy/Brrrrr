@@ -167,7 +167,8 @@ final class VisionPipeline: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
 				)
 			)
 		} catch {
-			// Swallow errors; transient failures are expected on real-world frames.
+			// Transient failures are expected on real-world frames; log for diagnosis without spamming every frame.
+			AppLogger.vision.error("Vision perform failed: \(error.localizedDescription, privacy: .public)")
 		}
 	}
 

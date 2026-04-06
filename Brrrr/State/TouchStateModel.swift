@@ -148,6 +148,7 @@ final class TouchStateModel: ObservableObject {
 	#if os(macOS)
 	private func pauseOnSleep() {
 		guard hasUserStartedMonitoring, !isPaused else { return }
+		AppLogger.lifecycle.info("pauseOnSleep (sleep/lock)")
 		wasAutoPausedBySleepOrLock = true
 		pauseMonitoring()
 	}
@@ -168,6 +169,7 @@ final class TouchStateModel: ObservableObject {
 		}
 
 		wasAutoPausedBySleepOrLock = false
+		AppLogger.lifecycle.info("resumeIfAutoPaused after sleep/lock")
 		resumeMonitoring()
 	}
 	#endif
@@ -187,6 +189,8 @@ final class TouchStateModel: ObservableObject {
 		hasUserStartedMonitoring = true
 		isPaused = false
 
+		AppLogger.lifecycle.info("startMonitoring")
+
 		// Apply persisted settings (camera selection, vision FPS) at start time.
 		let selectedCameraID = defaults.string(forKey: AppSettingsKey.selectedCameraID) ?? ""
 		if !selectedCameraID.isEmpty {
@@ -202,6 +206,9 @@ final class TouchStateModel: ObservableObject {
 	}
 
 	func stopMonitoring() {
+		AppLogger.lifecycle.info("stopMonitoring")
+		alertCoordinator.dismissFlash()
+
 		cpuTask?.cancel()
 		cpuTask = nil
 		resumeTask?.cancel()
@@ -216,6 +223,7 @@ final class TouchStateModel: ObservableObject {
 
 	func pauseMonitoring() {
 		guard !isPaused else { return }
+		AppLogger.lifecycle.info("pauseMonitoring")
 		isPaused = true
 		stopMonitoring()
 		statusText = "Paused"
@@ -223,6 +231,7 @@ final class TouchStateModel: ObservableObject {
 
 	func resumeMonitoring() {
 		guard isPaused else { return }
+		AppLogger.lifecycle.info("resumeMonitoring")
 		resumeTask?.cancel()
 		resumeTask = nil
 		pauseCountdownTask?.cancel()
@@ -385,7 +394,16 @@ final class TouchStateModel: ObservableObject {
 		let previousState = lastOutput?.state
 		lastOutput = output
 
+		if previousState != output.state {
+			AppLogger.lifecycle.info("touchState transition \(String(describing: previousState), privacy: .public) -> \(String(describing: output.state), privacy: .public)")
+		}
+
 		touchState = output.state
+
+		if previousState == .touching, output.state != .touching {
+			alertCoordinator.dismissFlash()
+		}
+
 		recordTouchIfNeeded(previousState: previousState, newState: output.state)
 
 		let stateText: String = switch output.state {

@@ -54,11 +54,26 @@ final class AlertCoordinator {
 		lastTriggerTime = -TimeInterval.greatestFiniteMagnitude
 	}
 
+#if os(macOS)
+	/// Dismiss any visible screen flash and cancel pending hide timers (e.g. on pause or leaving touch state).
+	func dismissFlash() {
+		AppLogger.alert.info("dismissFlash()")
+		screenFlashController.hideAllWindows()
+	}
+#else
+	func dismissFlash() {}
+#endif
+
 	/// Returns `true` if an alert was triggered.
 	@discardableResult
 	func triggerIfAllowed(ignoreCooldown: Bool = false, now: TimeInterval = ProcessInfo.processInfo.systemUptime) -> Bool {
-		guard ignoreCooldown || (now - lastTriggerTime) >= cooldownSeconds else { return false }
+		guard ignoreCooldown || (now - lastTriggerTime) >= cooldownSeconds else {
+			AppLogger.alert.debug("triggerIfAllowed denied (cooldown) cooldownSeconds=\(self.cooldownSeconds, privacy: .public)")
+			return false
+		}
 		lastTriggerTime = now
+
+		AppLogger.alert.info("triggerIfAllowed fired mode=\(String(describing: self.mode), privacy: .public) enablesSound=\(self.mode.enablesSound, privacy: .public) enablesScreen=\(self.mode.enablesScreen, privacy: .public)")
 
 		// Play sound first; in practice this reduces perceived "sound lag" vs. flashing first.
 		if mode.enablesSound {

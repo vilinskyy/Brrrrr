@@ -1,0 +1,25 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run tests
+        env:
+          DERIVED_DATA_PATH: ${{ runner.temp }}/BrrrrDerivedData
+          RESULT_BUNDLE_PATH: ${{ runner.temp }}/BrrrrTestResults.xcresult
+        run: bash run-tests.sh
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcode-test-results
+          path: ${{ runner.temp }}/BrrrrTestResults.xcresult
